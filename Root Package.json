@@ -1,0 +1,19 @@
+{
+    "name": "agrirent-platform",
+    "version": "1.0.0",
+    "description": "Agricultural Equipment Rental Platform - Full Stack",
+    "main": "agriRental_backend2-main/index.js",
+    "scripts": {
+      "start": "cd agriRental_backend2-main && npm start",
+      "build": "cd agriRental_frontend2-main && npm install && npm run build && cd ../agriRental_backend2-main && npm install",
+      "dev": "cd agriRental_backend2-main && npm run dev",
+      "postbuild": "echo 'Build completed successfully'"
+    },
+    "engines": {
+      "node": ">=16.0.0",
+      "npm": ">=8.0.0"
+    },
+    "keywords": ["agriculture", "equipment", "rental", "farming", "mern"],
+    "author": "Your Name",
+    "license": "ISC"
+  }
