@@ -44,3 +44,36 @@ api.interceptors.response.use(
 
 export { api };
 // ... rest of your exports
+
+// Add these exports at the end of your current api.js file
+export const bookingService = {
+  getAll: async (params = {}) => {
+    const response = await api.get('/api/bookings2', { params });
+    return response.data;
+  },
+  // Add other methods as needed...
+};
+
+export const equipmentService = {
+  getAll: async (params = {}) => {
+    const response = await api.get('/api/equipment', { params });
+    return response.data;
+  },
+  // Add other methods as needed...
+};
+
+export const authService = {
+  login: async (credentials) => {
+    const response = await api.post('/api/auth/login', credentials);
+    return response.data;
+  },
+  // Add other methods as needed...
+};
+
+export const userService = {
+  getAll: async (params = {}) => {
+    const response = await api.get('/api/users', { params });
+    return response.data;
+  },
+  // Add other methods as needed...
+};
