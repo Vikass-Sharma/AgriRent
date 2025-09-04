@@ -1,89 +1,186 @@
-const express = require('express');
-const connectDB = require('./config/database');
-const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+import axios from 'axios';
 
-const app = express();
+// Dynamic API base URL for different environments
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://agrirent-backend-tpv9.onrender.com' // Your backend URL
+  : 'http://localhost:8000';
 
-// Connect to database
-connectDB();
+// Create axios instance with base configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// CORS configuration for your specific URLs
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://agrirent-frontend-1nep.onrender.com',
-        'https://agrirent-backend-tpv9.onrender.com'
-      ]
-    : ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+// Request interceptor for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log(`API Request: ${config.method.toUpperCase()} ${API_BASE_URL}${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Response Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
+// Auth Service
+export const authService = {
+  login: async (email, password) => {
+    const response = await api.post('/api/auth/login', { email, password });
+    return response.data;
+  },
+  
+  register: async (userData) => {
+    const response = await api.post('/api/auth/register', userData);
+    return response.data;
+  }
 };
 
-app.use(cors(corsOptions));
-app.use(express.json());
+// Equipment Service
+export const equipmentService = {
+  getAll: async (params = {}) => {
+    const response = await api.get('/api/equipment', { params });
+    return response.data;
+  },
+  
+  getById: async (id) => {
+    const response = await api.get(`/api/equipment/${id}`);
+    return response.data;
+  },
+  
+  create: async (equipmentData) => {
+    const response = await api.post('/api/equipment', equipmentData);
+    return response.data;
+  },
+  
+  update: async (id, equipmentData) => {
+    const response = await api.put(`/api/equipment/${id}`, equipmentData);
+    return response.data;
+  },
+  
+  delete: async (id, ownerId) => {
+    const response = await api.delete(`/api/equipment/${id}`, {
+      data: { owner: ownerId }
+    });
+    return response.data;
+  },
+  
+  getCategories: async () => {
+    const response = await api.get('/api/equipment/categories');
+    return response.data;
+  },
+  
+  getLocations: async () => {
+    const response = await api.get('/api/equipment/locations');
+    return response.data;
+  },
 
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/equipment', require('./routes/equipment'));
-app.use('/api/bookings2', require('./routes/bookings2'));
-
-// Root route for backend status
-app.get('/', (req, res) => {
-  res.json({
-    message: 'AgriRent API Server',
-    status: 'Running',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      auth: '/api/auth',
-      users: '/api/users', 
-      equipment: '/api/equipment',
-      bookings: '/api/bookings2',
-      health: '/health'
-    }
-  });
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'AgriRent API is running',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    database: 'Connected'
-  });
-});
-
-const PORT = process.env.PORT || 8000;
-
-app.listen(PORT, () => {
-  console.log(`Agriculture Equipment Rental Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`API available at: http://localhost:${PORT}`);
-});
-
-// Payment hold cleanup service
-const { cleanupExpiredPaymentHolds } = require('./controllers/bookingController2');
-
-setInterval(async () => {
-  try {
-    const result = await cleanupExpiredPaymentHolds();
-    if (result.expiredCount > 0) {
-      console.log(`Cleaned up ${result.expiredCount} expired payment holds`);
-    }
-  } catch (error) {
-    console.error('Payment hold cleanup error:', error);
+  getUnavailableDates: async (equipmentId) => {
+    const response = await api.get(`/api/equipment/${equipmentId}/unavailable-dates`);
+    return response.data;
   }
-}, 60000);
+};
 
-console.log('Payment hold cleanup service started - running every 60 seconds');
+// Booking Service
+export const bookingService = {
+  getAll: async (params = {}) => {
+    const response = await api.get('/api/bookings2', { params });
+    return response.data;
+  },
+  
+  getById: async (id) => {
+    const response = await api.get(`/api/bookings2/${id}`);
+    return response.data;
+  },
+  
+  create: async (bookingData) => {
+    const response = await api.post('/api/bookings2', bookingData);
+    return response.data;
+  },
+  
+  createPaymentHold: async (bookingData) => {
+    const response = await api.post('/api/bookings2/payment-hold', bookingData);
+    return response.data;
+  },
+  
+  confirmPayment: async (bookingId, paymentData) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/confirm-payment`, paymentData);
+    return response.data;
+  },
+  
+  failPayment: async (bookingId) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/fail-payment`);
+    return response.data;
+  },
+  
+  cancelPayment: async (bookingId) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/cancel-payment`);
+    return response.data;
+  },
+  
+  accept: async (bookingId, ownerId) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/accept`, { ownerId });
+    return response.data;
+  },
+  
+  reject: async (bookingId, ownerId) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/reject`, { ownerId });
+    return response.data;
+  },
+  
+  complete: async (bookingId, ownerId) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/complete`, { ownerId });
+    return response.data;
+  },
+  
+  checkAvailability: async (equipmentId, params) => {
+    const response = await api.get(`/api/bookings2/availability/${equipmentId}`, { params });
+    return response.data;
+  },
+  
+  cancelSpecificDates: async (bookingId, datesToCancel, userId) => {
+    const response = await api.put(`/api/bookings2/${bookingId}/cancel-dates`, {
+      datesToCancel,
+      userId
+    });
+    return response.data;
+  }
+};
 
-// Initialize admin user
-const { initializeAdmin } = require('./controllers/userController');
-initializeAdmin();
+// User Service
+export const userService = {
+  getAll: async (params = {}) => {
+    const response = await api.get('/api/users', { params });
+    return response.data;
+  },
+  
+  getById: async (id) => {
+    const response = await api.get(`/api/users/${id}`);
+    return response.data;
+  },
+  
+  update: async (id, userData) => {
+    const response = await api.put(`/api/users/${id}`, userData);
+    return response.data;
+  },
+  
+  delete: async (id) => {
+    const response = await api.delete(`/api/users/${id}`);
+    return response.data;
+  }
+};
+
+// Export the axios instance for direct use if needed
+export { api };
