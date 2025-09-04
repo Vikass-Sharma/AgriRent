@@ -5,12 +5,13 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? process.env.REACT_APP_API_URL || 'https://agrirent-backend-tpv9.onrender.com'
   : 'http://localhost:8000';
 
-console.log('API Base URL:', API_BASE_URL); // Debug log
+console.log('Environment:', process.env.NODE_ENV);
+console.log('API Base URL:', API_BASE_URL);
 
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // Increased timeout for production
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,7 +20,7 @@ const api = axios.create({
 // Request interceptor for debugging
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+    console.log(`API Request: ${config.method.toUpperCase()} ${API_BASE_URL}${config.url}`);
     return config;
   },
   (error) => {
