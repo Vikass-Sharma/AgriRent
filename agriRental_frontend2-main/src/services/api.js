@@ -1,79 +1,89 @@
-import axios from 'axios';
+const express = require('express');
+const connectDB = require('./config/database');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
 
-// Dynamic API base URL for different environments
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '' // Use same domain in production (served from backend)
-  : 'http://localhost:8000';
+const app = express();
 
-// Create axios instance with base configuration
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+// Connect to database
+connectDB();
+
+// CORS configuration for your specific URLs
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        'https://agrirent-frontend-1nep.onrender.com',
+        'https://agrirent-backend-tpv9.onrender.com'
+      ]
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// API Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/equipment', require('./routes/equipment'));
+app.use('/api/bookings2', require('./routes/bookings2'));
+
+// Root route for backend status
+app.get('/', (req, res) => {
+  res.json({
+    message: 'AgriRent API Server',
+    status: 'Running',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: '/api/auth',
+      users: '/api/users', 
+      equipment: '/api/equipment',
+      bookings: '/api/bookings2',
+      health: '/health'
+    }
+  });
 });
 
-// Request interceptor for debugging
-api.interceptors.request.use(
-  (config) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'AgriRent API is running',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    database: 'Connected'
+  });
+});
+
+const PORT = process.env.PORT || 8000;
+
+app.listen(PORT, () => {
+  console.log(`Agriculture Equipment Rental Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`API available at: http://localhost:${PORT}`);
+});
+
+// Payment hold cleanup service
+const { cleanupExpiredPaymentHolds } = require('./controllers/bookingController2');
+
+setInterval(async () => {
+  try {
+    const result = await cleanupExpiredPaymentHolds();
+    if (result.expiredCount > 0) {
+      console.log(`Cleaned up ${result.expiredCount} expired payment holds`);
     }
-    return config;
-  },
-  (error) => {
-    console.error('API Request Error:', error);
-    return Promise.reject(error);
+  } catch (error) {
+    console.error('Payment hold cleanup error:', error);
   }
-);
+}, 60000);
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('API Response Error:', error.response?.data || error.message);
-    }
-    return Promise.reject(error);
-  }
-);
+console.log('Payment hold cleanup service started - running every 60 seconds');
 
-// Rest of your existing API service code...
-// (Keep all existing equipmentService, bookingService, authService, userService functions)
-
-export { api };
-// ... rest of your exports
-
-// Add these exports at the end of your current api.js file
-export const bookingService = {
-  getAll: async (params = {}) => {
-    const response = await api.get('/api/bookings2', { params });
-    return response.data;
-  },
-  // Add other methods as needed...
-};
-
-export const equipmentService = {
-  getAll: async (params = {}) => {
-    const response = await api.get('/api/equipment', { params });
-    return response.data;
-  },
-  // Add other methods as needed...
-};
-
-export const authService = {
-  login: async (credentials) => {
-    const response = await api.post('/api/auth/login', credentials);
-    return response.data;
-  },
-  // Add other methods as needed...
-};
-
-export const userService = {
-  getAll: async (params = {}) => {
-    const response = await api.get('/api/users', { params });
-    return response.data;
-  },
-  // Add other methods as needed...
-};
+// Initialize admin user
+const { initializeAdmin } = require('./controllers/userController');
+initializeAdmin();
