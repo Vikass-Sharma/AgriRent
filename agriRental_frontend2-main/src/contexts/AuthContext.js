@@ -23,10 +23,17 @@ export const AuthProvider = ({ children }) => {
   // On component mount, check if user was previously logged in
   // This maintains login state across browser sessions
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      // Restore user from localStorage if found
-      setUser(JSON.parse(storedUser));
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
+        // Restore user from localStorage if found and valid
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+      }
+    } catch (error) {
+      console.error('Error parsing stored user data:', error);
+      // Clear invalid data
+      localStorage.removeItem('user');
     }
     setLoading(false); // App is ready to render
   }, []);
@@ -41,6 +48,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token'); // Clear any stored tokens too
   };
 
   // Value object containing all auth data and functions
@@ -52,11 +60,9 @@ export const AuthProvider = ({ children }) => {
     loading,                                 // Boolean: is app still loading?
     isAuthenticated: !!user,                 // Boolean: is someone logged in?
     isAdmin: user?.role === 'admin',         // Boolean: is current user an admin?
-    isOwner: user?.role === 'owner',         // Boolean: is current user an equipment owner?
-    isUser: user?.role === 'user'            // Boolean: is current user a regular user?
+    isOwner: user?.role === 'owner'          // Boolean: is current user an owner?
   };
 
-  // Provide the authentication context to all child components
   return (
     <AuthContext.Provider value={value}>
       {children}

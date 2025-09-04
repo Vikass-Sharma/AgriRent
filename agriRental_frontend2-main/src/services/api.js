@@ -2,8 +2,10 @@ import axios from 'axios';
 
 // Dynamic API base URL for different environments
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://agrirent-backend-tpv9.onrender.com' // Your backend URL
+  ? process.env.REACT_APP_API_URL || 'https://agrirent-backend-tpv9.onrender.com'
   : 'http://localhost:8000';
+
+console.log('API Base URL:', API_BASE_URL); // Debug log
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -17,7 +19,7 @@ const api = axios.create({
 // Request interceptor for debugging
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method.toUpperCase()} ${API_BASE_URL}${config.url}`);
+    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
     return config;
   },
   (error) => {
@@ -28,9 +30,13 @@ api.interceptors.request.use(
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response Success:', response.config.url);
+    return response;
+  },
   (error) => {
     console.error('API Response Error:', error.response?.data || error.message);
+    console.error('Failed URL:', error.config?.url);
     return Promise.reject(error);
   }
 );
